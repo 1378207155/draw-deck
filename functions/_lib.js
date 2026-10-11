@@ -47,17 +47,26 @@ export async function relay(request, upstream, pathTail) {
   try { search = new URL(request.url).search; } catch (e) {}
   const url = upstream + pathTail + search;
   let lastErr = null;
+  let last429 = null;   // 记最后一次 429 的响应，重试用尽后透传给前端
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const resp = await fetch(url, { method, headers, body });
       const ctype = resp.headers.get('Content-Type') || 'application/json; charset=utf-8';
       const data = await resp.arrayBuffer();
+      // 429 限流：退避后重试（CF 出口 IP 池较大，重试可能换到未被限的 IP）；最后一次直接透传
+      if (resp.status === 429 && attempt < 3) {
+        last429 = { data, ctype };
+        await new Promise(r => setTimeout(r, attempt * 1500));
+        continue;
+      }
       return new Response(data, { status: resp.status, headers: { 'Content-Type': ctype, ...CORS } });
     } catch (e) {
       lastErr = e;
       if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 800));
     }
   }
+  // 429 重试用尽：透传最后一次的 429，让前端按限流处理（等待重试或提示用户）
+  if (last429) return new Response(last429.data, { status: 429, headers: { 'Content-Type': last429.ctype, ...CORS } });
   return json(502, { error: '转发到上游失败(' + upstream + '): ' + ((lastErr && lastErr.message) || String(lastErr)) });
 }
 
