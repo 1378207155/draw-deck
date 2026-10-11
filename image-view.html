@@ -474,7 +474,7 @@ const MODEL_COGVIEW = "cogview-3-flash";
 const MODEL_SENSE = "sensenova-u1.5-lite";
 const MODEL_AGNES_20 = "agnes-image-2.0-flash";
 const MODEL_AGNES_21 = "agnes-image-2.1-flash";
-const API_AGNES = "https://apihub.agnes-ai.com";
+const API_AGNES = "https://api.agnes-ai.cn";
 const MODEL_CF_FLUX = "@cf/black-forest-labs/flux-1-schnell";        // 固定 1024x1024，返回 base64 JSON
 const MODEL_CF_SDXL = "@cf/bytedance/stable-diffusion-xl-lightning"; // 尺寸可调，直接返回图片字节
 const MODEL_MS_ZIMG = "Tongyi-MAI/Z-Image-Turbo";   // 异步任务制（提交→轮询）
@@ -2201,7 +2201,7 @@ async function describe() {
       endpoint = '/agnes/v1/chat/completions';  // http(s) 同源转发（本地 server.py / Functions）
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
-      const base = proxy ? proxy.replace(/\/$/, '') : 'https://apihub.agnes-ai.com';
+      const base = proxy ? proxy.replace(/\/$/, '') : 'https://api.agnes-ai.cn';
       endpoint = base + '/agnes/v1/chat/completions';
     }
     model = modelName;

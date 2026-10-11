@@ -3,7 +3,7 @@
 
 export const UPSTREAM = {
   sense: 'https://token.sensenova.cn',
-  agnes: 'https://apihub.agnes-ai.com',
+  agnes: 'https://api.agnes-ai.cn',
   ms: 'https://api-inference.modelscope.cn',
   cf: 'https://api.cloudflare.com'
 };
