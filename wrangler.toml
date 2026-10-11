@@ -1,0 +1,6 @@
+# Cloudflare Pages 部署配置
+# name = Cloudflare 上的项目名（即 https://<name>.pages.dev 子域名前缀）
+name = "drawdeck"
+compatibility_date = "2024-11-01"
+# pages_build_output_dir = 静态资源输出目录；这里就是项目根（image-view.html / index.html / lib / functions 都在此）
+pages_build_output_dir = "."

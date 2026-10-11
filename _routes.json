@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "include": ["/v1/*", "/agnes/v1/*", "/ms/v1/*", "/cf/run/*", "/img", "/ping"],
+  "exclude": []
+}
