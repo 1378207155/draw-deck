@@ -271,7 +271,7 @@
         <button type="button" class="pick-trigger" onclick="openModelPicker()">🎛️ 选择模型 <span id="pickSummary" class="pick-summary"></span></button>
       </div>
 
-      <input type="text" id="corsProxy" placeholder="CORS 代理地址（可选，商汤/Agnes 需要，如 http://localhost:8000）" style="display:none;margin-top:8px;">
+      <input type="text" id="corsProxy" placeholder="CORS 代理地址（可选，商汤/Agnes/魔搭直连时需要；本地可填 http://localhost:8000）" style="display:none;margin-top:8px;">
 
       <label>提示词（中英文均可，自动互相翻译）</label>
       <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px; flex-wrap:wrap;">
@@ -564,7 +564,7 @@ function updatePickSummary() {
 
 function toggleKeyUI() {
   const proxyEl = document.getElementById('corsProxy');
-  // 通过本地 server（http://localhost:8000）打开时是同源转发，不需要也不显示代理框
+  // 通过 http(s) 打开时是同源转发（本地 server.py 或部署后的 Functions），不需要也不显示代理框
   const needProxy = needsLocalProxy() && !location.protocol.startsWith('http');
   proxyEl.style.display = needProxy ? '' : 'none';
   if (needProxy) {
@@ -1113,7 +1113,7 @@ async function genOne(modelKey, prompt, size, k, signal) {
   else baseUrl = API;
   if (sense || agnes || cf || ms) {
     if (location.protocol.startsWith('http')) {
-      baseUrl = '';  // 本地 server.py 同源转发，无需 CORS，忽略代理残留值
+      baseUrl = '';  // http(s) 同源转发（本地 server.py / 部署的 Functions），无需 CORS，忽略代理残留值
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
       if (proxy) {
@@ -1233,8 +1233,9 @@ async function genOne(modelKey, prompt, size, k, signal) {
   try {
     data = await resp.json();
   } catch (_) {
-    // 上游返回非 JSON（HTML 错误页 / 旧 server.py 未含某路由时的 501 等）
-    throw new Error('🚫 上游返回非 JSON（HTTP ' + resp.status + '）：本地 server.py 多半未重启或版本过旧（新路由未生效），或页面用 file:// 打开。请用 http://localhost:8000 并重启 server.py 后重试');
+    // 上游返回非 JSON（HTML 错误页 / 网关限流页等）
+    if (resp.status === 429) throw new Error('⏳ 上游限流（HTTP 429）：该模型 API 有速率限制，请稍后再试或将「数量」调小');
+    throw new Error('🚫 上游返回非 JSON（HTTP ' + resp.status + '）：上游返回了非 JSON 内容（可能是网关错误页），请稍后重试；若持续失败请检查该模型 Key 与额度');
   }
   if (!resp.ok) {
     // 兼容多种错误格式：OpenAI 风格 {error:{message|code}}、原生 {code,message}、以及 {error:"not found"} 字符串
@@ -1242,9 +1243,9 @@ async function genOne(modelKey, prompt, size, k, signal) {
     const bodyStr = JSON.stringify(data).slice(0, 400);
     const isRL = resp.status === 429 || /rate limiting|too many requests|IPM|RPM|TPM|limit reached/i.test(bodyStr);
     const isQuota = /quota|RESOURCE_EXHAUSTED|free_tier|exceeded/i.test(bodyStr);
-    // 本地服务 404：新路由未生效（server.py 未重启 / 版本过旧）
+    // 404：路由未生效（本地 server.py 未重启 / 部署的 Functions 缺失或版本过旧）
     if (resp.status === 404) {
-      msg = '🚫 本地服务返回 404（路由未生效）：server.py 未重启或版本过旧。请关闭旧服务窗口，重新运行 start.bat（或 python server.py），重启后 Ctrl+F5 重试。';
+      msg = '🚫 服务返回 404（路由未生效）：部署版可能是 Functions 未部署或版本过旧，请确认已 push 最新代码（含 functions/ 目录）后重试；本地版请重启 server.py 后 Ctrl+F5。';
     } else if (/rejected by the safety system|moderation_blocked|safety_violations|content_filter/i.test(JSON.stringify(data.error || {}))) {
       msg = '⛔ 被该模型的安全审查拦截（未通过内容审核）。GPT-Image-2 审查最严格；可换 Flux / Z-Image，或调整提示词后重试';
     } else if (isRL) {
@@ -1374,11 +1375,11 @@ async function generate() {
   if (needsLocalProxy() && !location.protocol.startsWith('http')) {
     const proxy = document.getElementById('corsProxy').value.trim();
     if (!proxy) {
-      showErr('⚠️ 该模型不支持浏览器直连：请双击 start.bat 启动本地服务，用浏览器打开 http://localhost:8000 后在此页面操作；或在"CORS 代理地址"填写对应转发（商汤 /v1、Agnes /agnes/v1）的代理。');
+      showErr('⚠️ 该模型不支持浏览器直连：请用本地服务（双击 start.bat 后访问 http://localhost:8000）或部署到 Cloudflare 后用 https 访问；file:// 直开需在下方"CORS 代理地址"填转发路径（商汤 /v1、Agnes /agnes/v1、魔搭 /ms/v1）。');
       return;
     }
     if (isLocalBase(proxy) && !(await probeLocal(proxy))) {
-      showErr('⚠️ 本地服务未启动：CORS 代理填的是 ' + proxy.replace(/\/+$/, '') + '，但该服务连不上。请先双击 start.bat 启动，再用浏览器打开 http://localhost:8000 操作；或清空"CORS 代理地址"框。');
+      showErr('⚠️ 转发服务连不上：CORS 代理填的是 ' + proxy.replace(/\/+$/, '') + '，但该地址无响应。本地请启动 server.py（双击 start.bat）；或清空"CORS 代理地址"框。');
       return;
     }
   }
@@ -2169,7 +2170,7 @@ async function describe() {
     if (!proxy) {
       const errDiv = document.createElement('div');
       errDiv.className = 'err';
-      errDiv.textContent = '商汤/Agnes/魔搭 不支持浏览器直连：请双击 start.bat 启动本地服务（http://localhost:8000）后在此页面操作，或在"CORS 代理地址"填写对应转发路径的代理。';
+      errDiv.textContent = '商汤/Agnes/魔搭 不支持浏览器直连：请用本地服务（双击 start.bat 后访问 http://localhost:8000）或部署到 Cloudflare 后用 https 访问；file:// 直开需在下方"CORS 代理地址"填转发路径。';
       out.appendChild(errDiv);
       btn.disabled = false; btn.innerHTML = '反推提示词';
       return;
@@ -2177,7 +2178,7 @@ async function describe() {
     if (isLocalBase(proxy) && !(await probeLocal(proxy))) {
       const errDiv = document.createElement('div');
       errDiv.className = 'err';
-      errDiv.textContent = '本地服务未启动：CORS 代理填的是 ' + proxy.replace(/\/+$/, '') + '，但该服务连不上。请先双击 start.bat 启动，再用浏览器打开 http://localhost:8000 操作；或清空"CORS 代理地址"框。';
+      errDiv.textContent = '转发服务连不上：CORS 代理填的是 ' + proxy.replace(/\/+$/, '') + '，但该地址无响应。本地请启动 server.py（双击 start.bat）；或清空"CORS 代理地址"框。';
       out.appendChild(errDiv);
       btn.disabled = false; btn.innerHTML = '反推提示词';
       return;
@@ -2188,7 +2189,7 @@ async function describe() {
   let endpoint, model;
   if (sense) {
     if (location.protocol.startsWith('http')) {
-      endpoint = '/v1/chat/completions';  // 本地 server.py 同源转发，忽略代理残留值
+      endpoint = '/v1/chat/completions';  // http(s) 同源转发（本地 server.py / Functions），忽略代理残留值
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
       const base = proxy ? proxy.replace(/\/$/, '') : 'https://token.sensenova.cn';
@@ -2197,7 +2198,7 @@ async function describe() {
     model = modelName;
   } else if (agnes) {
     if (location.protocol.startsWith('http')) {
-      endpoint = '/agnes/v1/chat/completions';  // 本地 server.py 同源转发
+      endpoint = '/agnes/v1/chat/completions';  // http(s) 同源转发（本地 server.py / Functions）
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
       const base = proxy ? proxy.replace(/\/$/, '') : 'https://apihub.agnes-ai.com';
@@ -2206,7 +2207,7 @@ async function describe() {
     model = modelName;
   } else if (ms) {
     if (location.protocol.startsWith('http')) {
-      endpoint = '/ms/v1/chat/completions';  // 本地 server.py 同源转发
+      endpoint = '/ms/v1/chat/completions';  // http(s) 同源转发（本地 server.py / Functions）
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
       const base = proxy ? proxy.replace(/\/$/, '') : 'https://api-inference.modelscope.cn';
