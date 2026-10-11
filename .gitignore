@@ -13,6 +13,11 @@ node_modules/
 # Cloudflare 构建产物：index.html 由 CF 构建时从 image-view.html 复制生成，不入库
 index.html
 
+# 本地开发文件（CF 部署不需要，仅本机用；server.py 含账户 ID 等本地配置，不入公开仓库）
+server.py
+start.bat
+wrangler.toml
+
 # 本地编辑器/临时
 *.log
 *.swp
