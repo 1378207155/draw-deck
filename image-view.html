@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多模型 AI 生图</title>
-<!-- 浏览器标签页图标：照片 + 星芒（Tabler photo-spark，SVG data URI，描边用主题色，无需额外图片文件） -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%234f46e5%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M15 8h.01%22/%3E%3Cpath d=%22M12 21h-6a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6%22/%3E%3Cpath d=%22M3 16l5 -5c.928 -.893 2.072 -.893 3 0l3.993 3.993%22/%3E%3Cpath d=%22M14 14l1 -1c.47 -.452 .995 -.675 1.52 -.67%22/%3E%3Cpath d=%22M19 22.5a4.75 4.75 0 0 1 3.5 -3.5a4.75 4.75 0 0 1 -3.5 -3.5a4.75 4.75 0 0 1 -3.5 3.5a4.75 4.75 0 0 1 3.5 3.5%22/%3E%3C/svg%3E">
+<link rel="icon" href="/favicon.ico">
 <style>
   :root { --bg:#f6f7f9; --card:#ffffff; --border:#e3e6eb; --text:#1f2430; --muted:#647086; --accent:#4f46e5; --accent2:#0e7490; }
   * { box-sizing:border-box; margin:0; padding:0; }
@@ -456,8 +455,8 @@
           <label class="mg-item"><input type="checkbox" class="model-check" value="cfSdxl" checked> Cloudflare SDXL-Lightning</label>
           <label class="mg-item"><input type="checkbox" class="model-check" value="cfSdxlBase" checked> Cloudflare SDXL-Base</label>
             <div class="mg-sec">Agnes / 魔搭（本地转发）</div>
-          <label class="mg-item"><input type="checkbox" class="model-check" value="agnes20" checked> Agnes Image 2.0 Flash</label>
           <label class="mg-item"><input type="checkbox" class="model-check" value="agnes21" checked> Agnes Image 2.1 Flash</label>
+          <label class="mg-item"><input type="checkbox" class="model-check" value="agnes25" checked> Agnes Image 2.5 Flash</label>
           <label class="mg-item"><input type="checkbox" class="model-check" value="msZimg" checked> 魔搭 Z-Image Turbo</label>
         </div>
       </div>
@@ -472,8 +471,8 @@ const API = "https://open.bigmodel.cn/api/paas/v4";
 const API_SENSE = "https://token.sensenova.cn";
 const MODEL_COGVIEW = "cogview-3-flash";
 const MODEL_SENSE = "sensenova-u1.5-lite";
-const MODEL_AGNES_20 = "agnes-image-2.0-flash";
 const MODEL_AGNES_21 = "agnes-image-2.1-flash";
+const MODEL_AGNES_25 = "agnes-image-2.5-flash";
 const API_AGNES = "https://api.agnes-ai.cn";
 const MODEL_CF_FLUX = "@cf/black-forest-labs/flux-1-schnell";        // 固定 1024x1024，返回 base64 JSON
 const MODEL_CF_SDXL = "@cf/bytedance/stable-diffusion-xl-lightning"; // 尺寸可调，直接返回图片字节
@@ -526,7 +525,7 @@ function selectedModels() {
   return Array.from(boxes).map(b => b.value);
 }
 function isSense() { return selectedModels().includes('sensenova'); }
-function isAgnes() { return selectedModels().includes('agnes20') || selectedModels().includes('agnes21'); }
+function isAgnes() { return selectedModels().includes('agnes21') || selectedModels().includes('agnes25'); }
 function isCF() { return selectedModels().includes('cfFlux') || selectedModels().includes('cfSdxl') || selectedModels().includes('cfSdxlBase'); }
 function isMS() { return selectedModels().includes('msZimg'); }
 function isAll() { return selectedModels().length >= 2; }
@@ -575,7 +574,7 @@ function toggleKeyUI() {
   updatePromptCount();
   // 参考图：仅当所有勾选模型都支持图生图（目前只有 Agnes）时才显示
   const sels = selectedModels();
-  const refOk = sels.length > 0 && sels.every(m => m === 'agnes20' || m === 'agnes21');
+  const refOk = sels.length > 0 && sels.every(m => m === 'agnes21' || m === 'agnes25');
   const refZone = document.getElementById('refZone');
   if (refZone) refZone.style.display = refOk ? '' : 'none';
 }
@@ -594,8 +593,8 @@ const MODEL_SIZES = {
   // Agnes 2.1（wiki.agnes-ai.com「agnes-image-21-flash」）：下面是官方原生档位（1K/2K），
   // 非原生精确尺寸会被自动归一到最接近的档位+宽高比（例如 1440x720 会落到 1312x736），故不再提供
   agnes21:   ['1024x1024', '1152x864', '864x1152', '1312x736', '736x1312', '1248x832', '832x1248', '1024x768', '768x1024', '2048x2048', '2304x1728', '1728x2304', '2624x1472', '1472x2624'],
-  // Agnes 2.0：官方只给了示例尺寸（1024x768 / 1024x1024 / 768x1024）和 1K–4K 档位说明，无枚举表 → 取同族 1K 档
-  agnes20:   ['1024x1024', '1024x768', '768x1024', '1152x864', '864x1152', '1312x736', '736x1312'],
+  // Agnes 2.5（agnes-image-2.5-flash）：同族档位，沿用 2.1 的原生尺寸表
+  agnes25:   ['1024x1024', '1152x864', '864x1152', '1312x736', '736x1312', '1248x832', '832x1248', '1024x768', '768x1024', '2048x2048', '2304x1728', '1728x2304', '2624x1472', '1472x2624'],
   // 魔搭 Z-Image-Turbo（github.com/Tongyi-MAI/Z-Image README「Recommended Parameters」）：
   // 官方推荐 512×512 ~ 2048×2048（按总像素面积计，任意宽高比）
   msZimg:    ['1024x1024', '1280x720', '720x1280', '1344x768', '768x1344', '1152x864', '864x1152', '1536x1024', '1024x1536', '2048x1024', '1024x2048', '2048x2048'],
@@ -755,7 +754,7 @@ const PROMPT_MAX_AGNES = 9000;   // Agnes Image 2.0 / 2.1
 const PROMPT_MAX_CF_FLUX = 2048; // Cloudflare Flux1
 const PROMPT_MAX_MS = 4000;      // 魔搭 Z-Image Turbo
 function promptLimitFor(mk) {
-  if (mk === 'agnes20' || mk === 'agnes21') return PROMPT_MAX_AGNES;
+  if (mk === 'agnes21' || mk === 'agnes25') return PROMPT_MAX_AGNES;
   if (mk === 'cfFlux') return PROMPT_MAX_CF_FLUX;
   if (mk === 'msZimg') return PROMPT_MAX_MS;
   return null;
@@ -1072,8 +1071,8 @@ if (singleMode) applySingleKeepOne();
 const MODEL_LIST = [
   { key: 'cogview', label: '智谱', keyEl: 'keyZhipu' },
   { key: 'sensenova', label: '商汤', keyEl: 'keySense' },
-  { key: 'agnes20', label: 'Agnes 2.0', keyEl: 'keyAgnes' },
   { key: 'agnes21', label: 'Agnes 2.1', keyEl: 'keyAgnes' },
+  { key: 'agnes25', label: 'Agnes 2.5', keyEl: 'keyAgnes' },
   { key: 'cfFlux', label: 'CF Flux1', keyEl: 'keyCF' },
   { key: 'cfSdxl', label: 'CF SDXL', keyEl: 'keyCF' },
   { key: 'msZimg', label: '魔搭 Z-Image', keyEl: 'keyMS' },
@@ -1102,7 +1101,7 @@ function keyForModel(key) {
 
 async function genOne(modelKey, prompt, size, k, signal) {
   const sense = modelKey === 'sensenova';
-  const agnes = modelKey === 'agnes20' || modelKey === 'agnes21';
+  const agnes = modelKey === 'agnes21' || modelKey === 'agnes25';
   const cf = modelKey === 'cfFlux' || modelKey === 'cfSdxl' || modelKey === 'cfSdxlBase';
   const ms = modelKey === 'msZimg';
   let baseUrl;
@@ -1113,7 +1112,14 @@ async function genOne(modelKey, prompt, size, k, signal) {
   else baseUrl = API;
   if (sense || agnes || cf || ms) {
     if (location.protocol.startsWith('http')) {
-      baseUrl = '';  // http(s) 同源转发（本地 server.py / 部署的 Functions），无需 CORS，忽略代理残留值
+      const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.hostname);
+      // Agnes 线上直连上游：不经 Functions 转发，出口从 CF 数据中心 IP 改为用户本机 IP，避开 Agnes 对 CF IP 的限流
+      // 本地（localhost）仍走同源转发（server.py）；其余模型一律同源转发
+      if (agnes && !isLocal) {
+        // baseUrl 保持 API_AGNES，下面 endpoint 拼不带 /agnes 前缀
+      } else {
+        baseUrl = '';  // http(s) 同源转发（本地 server.py / 部署的 Functions），无需 CORS
+      }
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
       if (proxy) {
@@ -1209,8 +1215,9 @@ async function genOne(modelKey, prompt, size, k, signal) {
     endpoint = baseUrl + '/v1/images/generations';
     body = { model: modelName, prompt, size, watermark: false, prompt_extend: true, response_format: 'url' };
   } else if (agnes) {
-    modelName = modelKey === 'agnes20' ? MODEL_AGNES_20 : MODEL_AGNES_21;
-    endpoint = baseUrl + '/agnes/v1/images/generations';
+    modelName = modelKey === 'agnes25' ? MODEL_AGNES_25 : MODEL_AGNES_21;
+    // 直连上游走 /v1/，走同源转发走 /agnes/v1/（Functions 去掉 /agnes 前缀）
+    endpoint = baseUrl + (baseUrl ? '/v1/images/generations' : '/agnes/v1/images/generations');
     // Agnes 文档要求 response_format 放在 extra_body 内部
     // 超长时只在 Agnes 请求内截断（不影响其他模型）
     prompt = truncatePrompt(prompt, PROMPT_MAX_AGNES);   // Agnes 上限 9000
@@ -1389,7 +1396,7 @@ async function generate() {
 
   // 参考图提示：仅 Agnes 支持图生图，其他勾选模型会忽略参考图
   if (_refImage) {
-    const noAgnes = selectedModels().filter(m => m !== 'agnes20' && m !== 'agnes21');
+    const noAgnes = selectedModels().filter(m => m !== 'agnes21' && m !== 'agnes25');
     if (noAgnes.length) {
       showErr('⚠️ 参考图仅 Agnes 模型支持，勾选中的 ' + noAgnes.map(modelLabel).join('、') + ' 将忽略参考图，按文生图生成');
     }
@@ -1473,7 +1480,7 @@ async function generate() {
 
   // 模型之间并行（各自独立进度）；模型内部小并发——仅 Agnes 支持并发，智谱/商汤串行避免上游限流
   function modelConcurrency(mk) {
-    return (mk === 'agnes20' || mk === 'agnes21') ? 2 : 1;
+    return (mk === 'agnes21' || mk === 'agnes25') ? 2 : 1;
   }
   await Promise.all(models.map(async (mk) => {
     if (window._stopGen) return;
@@ -2198,7 +2205,9 @@ async function describe() {
     model = modelName;
   } else if (agnes) {
     if (location.protocol.startsWith('http')) {
-      endpoint = '/agnes/v1/chat/completions';  // http(s) 同源转发（本地 server.py / Functions）
+      const isLocal = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(location.hostname);
+      // Agnes 线上直连上游（走用户 IP，避开 CF 出口被 Agnes 限流）；本地走同源转发
+      endpoint = isLocal ? '/agnes/v1/chat/completions' : (API_AGNES + '/v1/chat/completions');
     } else {
       const proxy = document.getElementById('corsProxy').value.trim();
       const base = proxy ? proxy.replace(/\/$/, '') : 'https://api.agnes-ai.cn';
