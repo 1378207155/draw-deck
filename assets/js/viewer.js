@@ -2,6 +2,7 @@ let _lbUrls = [];
 let _lbIdx = 0;
 
 let _lbGroup = ''; // '' = 全部组；否则为模型 key，只看该组
+let _lbPlain = false;   // true = 反推预览 / 参考图：不显示底部模型栏与下载按钮
 
 function collectLightboxUrls() {
   // 只收集成功渲染的图片（失败 slot 是 .slot-loading.err，里面没有 img，天然跳过）
@@ -36,8 +37,8 @@ function buildLbGroups() {
   const lb = document.getElementById('lightbox');
   const secs = document.querySelectorAll('#result .model-sec');
   if (!wrap || !rail) return;
-  const many = secs.length > 1;
-  rail.style.display = many ? '' : 'none';             // 只有一个模型时不显示底部模型栏
+  const many = !_lbPlain && secs.length > 1;
+  rail.style.display = many ? '' : 'none';             // 只有一个模型（或反推/参考图预览）时不显示底部模型栏
   if (lb) lb.classList.toggle('has-models', many);     // 画面同步留出底栏高度
   if (!many) return;
   wrap.innerHTML = '';
@@ -56,11 +57,16 @@ function buildLbGroups() {
   });
 }
 
-function showLightbox(url) {
+function showLightbox(url, plain) {
+  _lbPlain = !!plain;
   _lbGroup = ''; // 从大图进入默认「全部」
-  collectLightboxUrls();
-  _lbIdx = _lbUrls.indexOf(url);
-  if (_lbIdx === -1) { _lbUrls = [url]; _lbIdx = 0; }
+  if (_lbPlain) {
+    _lbUrls = [url]; _lbIdx = 0;   // 反推预览 / 参考图：单张，不参与模型分组
+  } else {
+    collectLightboxUrls();
+    _lbIdx = _lbUrls.indexOf(url);
+    if (_lbIdx === -1) { _lbUrls = [url]; _lbIdx = 0; }
+  }
   buildLbGroups();
   lightboxShow();
 }
@@ -73,6 +79,8 @@ function lightboxShow() {
   document.getElementById('lbName').textContent = groupNameOf(raw) || '大图';
   document.getElementById('lbCounter').textContent = (_lbIdx + 1) + ' / ' + _lbUrls.length;
   document.getElementById('lbDims').textContent = '';
+  const _dlBtn = document.getElementById('lbDlBtn');
+  if (_dlBtn) _dlBtn.style.display = _lbPlain ? 'none' : '';   // 反推预览 / 参考图：不显示下载
   lbSetZoom(1, false);                         // 换图回到「适应窗口」
   img.classList.add('lb-loading');             // 立即隐藏旧图，避免新图未加载时仍显示上一张
   if (tip) tip.classList.add('show');
@@ -349,7 +357,7 @@ const previewImg = document.getElementById('preview');
 // 点击上传缩略图 → 大图查看（阻止冒泡，避免触发文件选择）
 function previewUpload(ev) {
   if (ev) ev.stopPropagation();
-  if (previewImg && previewImg.src) showLightbox(previewImg.src);
+  if (previewImg && previewImg.src) showLightbox(previewImg.src, true);
 }
 
 function showPreview(file) {

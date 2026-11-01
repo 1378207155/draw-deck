@@ -375,7 +375,7 @@ try {
 // 点击缩略图放大查看角色参考图（复用全局 lightbox）
 function previewVideoRef(ev) {
   if (ev) ev.stopPropagation();
-  if (_vRefImage) showLightbox(_vRefImage);
+  if (_vRefImage) showLightbox(_vRefImage, true);
 }
 
 // 重置视频面板：清空角色参考图 + 所有场景提示词，回到一张空场景
@@ -476,7 +476,7 @@ async function submitVideoTask(modelKey, prompt, size, k, signal, opts) {
     body.images && body.images[0] ? ('| 类型=' + (String(body.images[0]).indexOf('data:') === 0 ? 'base64(' + body.images[0].length + ' 字符)' : 'URL')) : '',
     '| 首帧 first_frame=' + (body.first_frame ? '有(' + body.first_frame.length + ' 字符)' : '无'),
     '| 提示词前 40 字=' + finalPrompt.slice(0, 40));
-  const maxRetry = 20;   // Agnes 免费队列/RPM 严格，加长重试次数等队列排空
+  const maxRetry = 30;   // Agnes 免费队列/RPM 严格，加长重试次数等队列排空
   let sd = null;
   for (let attempt = 1; attempt <= maxRetry; attempt++) {
     let sub;
@@ -504,8 +504,8 @@ async function submitVideoTask(modelKey, prompt, size, k, signal, opts) {
     if (DEBUG_VIDEO) console.log('[submitVideo] attempt=' + attempt + ' status=' + sub.status + ' ec=' + ec + ' em=' + String(em).slice(0, 100));
     if (retryable && attempt < maxRetry) {
       if (_videoStopped || signal.aborted) throw new Error('已停止');
-      // 429 / 队列满：指数退避（10s→60s，队列排空更久）；5xx/其它：短退避
-      const wait = (sub.status === 429 || isQueue) ? Math.min(60000, attempt * 10000) : Math.min(10000, attempt * 2000);
+      // 队列满/429：快速重试（5s→10s→15s…最长60s）；其他错误：短退避
+      const wait = (sub.status === 429 || isQueue) ? Math.min(60000, attempt * 5000) : Math.min(10000, attempt * 2000);
       await sleepV(wait, signal);
       if (_videoStopped || signal.aborted) throw new Error('已停止');
       continue;
